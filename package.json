@@ -1,0 +1,72 @@
+{
+  "name": "passy",
+  "version": "1.0.0",
+  "description": "Local password and secrets manager",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node scripts/fix-html.js && npm run build:electron",
+    "build:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json && node scripts/rename-preload.js",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run build:electron && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "test": "vitest"
+  },
+  "keywords": [
+    "password-manager",
+    "secrets",
+    "electron",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
+    "electron-rebuild": "^3.2.9",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^1.0.0",
+    "wait-on": "^9.0.3"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/uuid": "^10.0.0",
+    "better-sqlite3": "^12.6.2",
+    "lucide-react": "^0.300.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.10"
+  },
+  "build": {
+    "appId": "com.passy.app",
+    "productName": "Passy",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

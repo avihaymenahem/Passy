@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Dark theme (default) */
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #64748b;
+  --color-border: #334155;
+  --color-scrollbar-track: #1e293b;
+  --color-scrollbar-thumb: #475569;
+  --color-scrollbar-hover: #64748b;
+}
+
+/* Dark theme */
+:root.dark {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #64748b;
+  --color-border: #334155;
+  --color-scrollbar-track: #1e293b;
+  --color-scrollbar-thumb: #475569;
+  --color-scrollbar-hover: #64748b;
+}
+
+/* Light theme */
+:root.light {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f1f5f9;
+  --color-bg-tertiary: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-border: #cbd5e1;
+  --color-scrollbar-track: #e2e8f0;
+  --color-scrollbar-thumb: #94a3b8;
+  --color-scrollbar-hover: #64748b;
+}
+
+:root {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-hover);
+}
+
+/* Input focus styles */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #3b82f6;
+}
+
+/* Button base styles */
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  --tw-ring-offset-color: var(--color-bg-primary);
+}
+
+.btn-primary {
+  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+.btn-secondary:hover {
+  background-color: var(--color-border);
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+
+.btn-ghost {
+  @apply bg-transparent;
+  color: var(--color-text-muted);
+}
+.btn-ghost:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+/* Card styles */
+.card {
+  @apply rounded-xl p-4;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* Input styles */
+.input {
+  @apply w-full px-3 py-2 rounded-lg focus:ring-1 focus:ring-primary-500;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+.input:focus {
+  border-color: #3b82f6;
+}
+
+/* Label styles */
+.label {
+  @apply block text-sm font-medium mb-1;
+  color: var(--color-text-secondary);
+}
+
+/* Sidebar item */
+.sidebar-item {
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer;
+  color: var(--color-text-secondary);
+}
+.sidebar-item:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.sidebar-item.active {
+  background-color: var(--color-bg-secondary);
+  @apply text-primary-500;
+}
+
+/* Secret card */
+.secret-card {
+  @apply flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors;
+  border: 1px solid var(--color-border);
+  background-color: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent);
+}
+.secret-card:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.secret-card.selected {
+  @apply border-primary-500 bg-primary-500/10;
+}
+
+/* Password dot */
+.password-dot {
+  @apply inline-block w-2 h-2 rounded-full;
+  background-color: var(--color-text-muted);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* Title bar drag region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.drag-region button,
+.drag-region input,
+.drag-region a {
+  -webkit-app-region: no-drag;
+}
+
+/* Title bar styles */
+.title-bar {
+  -webkit-app-region: no-drag;
+}
