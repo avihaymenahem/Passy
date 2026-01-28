@@ -209,6 +209,26 @@ ipcMain.handle('categories:delete', async (_, id: string) => {
   }
 })
 
+ipcMain.handle('categories:update', async (_, id: string, data: { name?: string; icon?: string }) => {
+  if (!databaseService?.isUnlocked()) return { success: false, error: 'Vault is locked' }
+  try {
+    const category = databaseService.updateCategory(id, data)
+    return { success: true, data: category }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+})
+
+ipcMain.handle('categories:reorder', async (_, orderedIds: string[]) => {
+  if (!databaseService?.isUnlocked()) return { success: false, error: 'Vault is locked' }
+  try {
+    databaseService.reorderCategories(orderedIds)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+})
+
 // IPC Handlers - Clipboard
 ipcMain.handle('clipboard:write', async (_, text: string, clearAfterMs?: number) => {
   clipboard.writeText(text)

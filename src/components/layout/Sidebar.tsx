@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { useSecretsStore } from '../../stores/secretsStore'
 import { useUIStore } from '../../stores/uiStore'
 import { ThemePicker } from '../ui/ThemePicker'
-import type { SecretType } from '../../types/secrets'
+import type { SecretType, Category } from '../../types/secrets'
 import {
   Shield,
   Key,
@@ -18,7 +18,16 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Pencil,
+  GripVertical,
 } from 'lucide-react'
+
+interface ContextMenuState {
+  isOpen: boolean
+  x: number
+  y: number
+  categoryId: string | null
+}
 
 const SECRET_TYPES: { type: SecretType | 'all'; label: string; icon: React.ReactNode }[] = [
   { type: 'all', label: 'All Items', icon: <Layers className="w-5 h-5" /> },
@@ -42,17 +51,155 @@ export function Sidebar() {
     setSelectedCategoryId,
     setShowFavoritesOnly,
     createCategory,
+    updateCategory,
     deleteCategory,
+    reorderCategories,
   } = useSecretsStore()
 
   const [isAddingCategory, setIsAddingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    categoryId: null,
+  })
+  const dragCounter = useRef(0)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return
     await createCategory(newCategoryName.trim())
     setNewCategoryName('')
     setIsAddingCategory(false)
+  }
+
+  const handleStartEdit = (category: Category) => {
+    setEditingCategoryId(category.id)
+    setEditingCategoryName(category.name)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingCategoryId || !editingCategoryName.trim()) {
+      setEditingCategoryId(null)
+      setEditingCategoryName('')
+      return
+    }
+    await updateCategory(editingCategoryId, { name: editingCategoryName.trim() })
+    setEditingCategoryId(null)
+    setEditingCategoryName('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingCategoryId(null)
+    setEditingCategoryName('')
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, categoryId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      categoryId,
+    })
+  }
+
+  const closeContextMenu = () => {
+    setContextMenu({ isOpen: false, x: 0, y: 0, categoryId: null })
+  }
+
+  const handleContextMenuEdit = () => {
+    const category = categories.find((c) => c.id === contextMenu.categoryId)
+    if (category) {
+      handleStartEdit(category)
+    }
+    closeContextMenu()
+  }
+
+  const handleContextMenuDelete = () => {
+    if (contextMenu.categoryId) {
+      deleteCategory(contextMenu.categoryId)
+    }
+    closeContextMenu()
+  }
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        closeContextMenu()
+      }
+    }
+
+    if (contextMenu.isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [contextMenu.isOpen])
+
+  const handleDragStart = (e: React.DragEvent, categoryId: string) => {
+    setDraggedCategoryId(categoryId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', categoryId)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedCategoryId(null)
+    setDragOverCategoryId(null)
+    dragCounter.current = 0
+  }
+
+  const handleDragEnter = (e: React.DragEvent, categoryId: string) => {
+    e.preventDefault()
+    dragCounter.current++
+    if (categoryId !== draggedCategoryId) {
+      setDragOverCategoryId(categoryId)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current--
+    if (dragCounter.current === 0) {
+      setDragOverCategoryId(null)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetCategoryId: string) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setDragOverCategoryId(null)
+
+    if (!draggedCategoryId || draggedCategoryId === targetCategoryId) {
+      setDraggedCategoryId(null)
+      return
+    }
+
+    const draggedIndex = categories.findIndex((c) => c.id === draggedCategoryId)
+    const targetIndex = categories.findIndex((c) => c.id === targetCategoryId)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedCategoryId(null)
+      return
+    }
+
+    const newOrder = [...categories]
+    const [removed] = newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, removed)
+
+    reorderCategories(newOrder.map((c) => c.id))
+    setDraggedCategoryId(null)
   }
 
   const getCountForType = (type: SecretType | 'all') => {
@@ -213,33 +360,62 @@ export function Sidebar() {
 
             <ul className="space-y-1">
               {categories.map((category) => (
-                <li key={category.id} className="group relative">
-                  <button
-                    onClick={() => {
-                      setSelectedCategoryId(category.id)
-                      setSelectedType('all')
-                      setShowFavoritesOnly(false)
-                    }}
-                    className={`sidebar-item w-full ${
-                      selectedCategoryId === category.id ? 'active' : ''
-                    }`}
-                  >
-                    <FolderOpen className="w-5 h-5" />
-                    <span className="flex-1 text-left truncate">{category.name}</span>
-                    <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {getCountForCategory(category.id)}
-                    </span>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteCategory(category.id)
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                    style={{ color: 'var(--color-text-muted)' }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <li
+                  key={category.id}
+                  className={`group relative ${
+                    draggedCategoryId === category.id ? 'opacity-50' : ''
+                  } ${
+                    dragOverCategoryId === category.id
+                      ? 'border-t-2 border-primary-500'
+                      : ''
+                  }`}
+                  draggable={editingCategoryId !== category.id}
+                  onDragStart={(e) => handleDragStart(e, category.id)}
+                  onDragEnd={handleDragEnd}
+                  onDragEnter={(e) => handleDragEnter(e, category.id)}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, category.id)}
+                >
+                  {editingCategoryId === category.id ? (
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <FolderOpen className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                      <input
+                        type="text"
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit()
+                          if (e.key === 'Escape') handleCancelEdit()
+                        }}
+                        onBlur={handleSaveEdit}
+                        className="input text-sm flex-1 py-1"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedCategoryId(category.id)
+                        setSelectedType('all')
+                        setShowFavoritesOnly(false)
+                      }}
+                      onContextMenu={(e) => handleContextMenu(e, category.id)}
+                      className={`sidebar-item w-full ${
+                        selectedCategoryId === category.id ? 'active' : ''
+                      }`}
+                    >
+                      <GripVertical
+                        className="w-4 h-4 opacity-0 group-hover:opacity-50 cursor-grab flex-shrink-0"
+                        style={{ color: 'var(--color-text-muted)' }}
+                      />
+                      <FolderOpen className="w-5 h-5 flex-shrink-0" />
+                      <span className="flex-1 text-left truncate">{category.name}</span>
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        {getCountForCategory(category.id)}
+                      </span>
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -279,6 +455,36 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu.isOpen && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-50 min-w-[140px] py-1 rounded-lg shadow-lg border"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+            backgroundColor: 'var(--color-bg-secondary)',
+            borderColor: 'var(--color-border)',
+          }}
+        >
+          <button
+            onClick={handleContextMenuEdit}
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-black/10 transition-colors"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            <Pencil className="w-4 h-4" />
+            Rename
+          </button>
+          <button
+            onClick={handleContextMenuDelete}
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-black/10 transition-colors text-red-400"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      )}
     </aside>
   )
 }

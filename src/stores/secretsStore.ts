@@ -26,7 +26,9 @@ interface SecretsState {
 
   // Category actions
   createCategory: (name: string, icon?: string) => Promise<Category | null>
+  updateCategory: (id: string, data: { name?: string; icon?: string }) => Promise<Category | null>
   deleteCategory: (id: string) => Promise<boolean>
+  reorderCategories: (orderedIds: string[]) => Promise<boolean>
 
   // Filter actions
   setSearchQuery: (query: string) => void
@@ -165,6 +167,23 @@ export const useSecretsStore = create<SecretsState>((set, get) => ({
     }
   },
 
+  updateCategory: async (id: string, data: { name?: string; icon?: string }) => {
+    try {
+      const result = await window.electronAPI.categories.update(id, data)
+      if (result.success && result.data) {
+        set((state) => ({
+          categories: state.categories.map((c) =>
+            c.id === id ? (result.data as Category) : c
+          ),
+        }))
+        return result.data as Category
+      }
+      return null
+    } catch {
+      return null
+    }
+  },
+
   deleteCategory: async (id: string) => {
     try {
       const result = await window.electronAPI.categories.delete(id)
@@ -177,6 +196,33 @@ export const useSecretsStore = create<SecretsState>((set, get) => ({
       }
       return false
     } catch {
+      return false
+    }
+  },
+
+  reorderCategories: async (orderedIds: string[]) => {
+    try {
+      // Optimistically update the UI
+      set((state) => {
+        const categoryMap = new Map(state.categories.map((c) => [c.id, c]))
+        const reordered = orderedIds
+          .map((id, index) => {
+            const cat = categoryMap.get(id)
+            return cat ? { ...cat, sortOrder: index } : null
+          })
+          .filter((c): c is Category => c !== null)
+        return { categories: reordered }
+      })
+
+      const result = await window.electronAPI.categories.reorder(orderedIds)
+      if (!result.success) {
+        // Reload categories if the reorder failed
+        get().loadCategories()
+        return false
+      }
+      return true
+    } catch {
+      get().loadCategories()
       return false
     }
   },

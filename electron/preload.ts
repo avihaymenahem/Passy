@@ -24,7 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   categories: {
     getAll: () => ipcRenderer.invoke('categories:getAll'),
     create: (name: string, icon?: string) => ipcRenderer.invoke('categories:create', name, icon),
+    update: (id: string, data: { name?: string; icon?: string }) => ipcRenderer.invoke('categories:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('categories:delete', id),
+    reorder: (orderedIds: string[]) => ipcRenderer.invoke('categories:reorder', orderedIds),
   },
 
   // Clipboard
@@ -72,7 +74,9 @@ export interface ElectronAPI {
   categories: {
     getAll: () => Promise<{ success: boolean; data?: unknown[]; error?: string }>
     create: (name: string, icon?: string) => Promise<{ success: boolean; data?: unknown; error?: string }>
+    update: (id: string, data: { name?: string; icon?: string }) => Promise<{ success: boolean; data?: unknown; error?: string }>
     delete: (id: string) => Promise<{ success: boolean; error?: string }>
+    reorder: (orderedIds: string[]) => Promise<{ success: boolean; error?: string }>
   }
   clipboard: {
     write: (text: string, clearAfterMs?: number) => Promise<{ success: boolean }>

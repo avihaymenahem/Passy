@@ -28,6 +28,7 @@ interface CategoryRow {
   id: string
   name: string
   icon: string | null
+  sort_order: number
   created_at: string
 }
 
@@ -116,6 +117,9 @@ export class DatabaseService {
     this.db = new Database(this.getVaultPath())
     this.isVaultUnlocked = true
 
+    // Run migrations for existing databases
+    this.runMigrations()
+
     return true
   }
 
@@ -160,6 +164,7 @@ export class DatabaseService {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         icon TEXT,
+        sort_order INTEGER DEFAULT 0,
         created_at TEXT NOT NULL
       );
 
@@ -167,6 +172,32 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_secrets_category ON secrets(category_id);
       CREATE INDEX IF NOT EXISTS idx_secrets_favorite ON secrets(favorite);
     `)
+
+    // Run migrations for existing databases
+    this.runMigrations()
+  }
+
+  /**
+   * Run database migrations for schema updates
+   */
+  private runMigrations(): void {
+    if (!this.db) return
+
+    // Check if sort_order column exists in categories table
+    const tableInfo = this.db.prepare("PRAGMA table_info(categories)").all() as Array<{ name: string }>
+    const hasSortOrder = tableInfo.some((col) => col.name === 'sort_order')
+
+    if (!hasSortOrder) {
+      // Add sort_order column to existing categories table
+      this.db.exec('ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0')
+
+      // Initialize sort_order based on current alphabetical order
+      const categories = this.db.prepare('SELECT id FROM categories ORDER BY name').all() as Array<{ id: string }>
+      const stmt = this.db.prepare('UPDATE categories SET sort_order = ? WHERE id = ?')
+      categories.forEach((cat, index) => {
+        stmt.run(index, cat.id)
+      })
+    }
   }
 
   /**
@@ -335,12 +366,13 @@ export class DatabaseService {
   getAllCategories(): Record<string, unknown>[] {
     if (!this.db || !this.isUnlocked()) throw new Error('Vault is locked')
 
-    const rows = this.db.prepare('SELECT * FROM categories ORDER BY name').all() as CategoryRow[]
+    const rows = this.db.prepare('SELECT * FROM categories ORDER BY sort_order, name').all() as CategoryRow[]
 
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
       icon: row.icon,
+      sortOrder: row.sort_order,
       createdAt: row.created_at,
     }))
   }
@@ -354,12 +386,56 @@ export class DatabaseService {
     const id = this.cryptoService.generateId()
     const now = new Date().toISOString()
 
-    this.db.prepare(`
-      INSERT INTO categories (id, name, icon, created_at)
-      VALUES (?, ?, ?, ?)
-    `).run(id, name, icon || null, now)
+    // Get max sort order and add 1
+    const maxOrderResult = this.db.prepare('SELECT MAX(sort_order) as max_order FROM categories').get() as { max_order: number | null }
+    const sortOrder = (maxOrderResult?.max_order ?? -1) + 1
 
-    return { id, name, icon, createdAt: now }
+    this.db.prepare(`
+      INSERT INTO categories (id, name, icon, sort_order, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, name, icon || null, sortOrder, now)
+
+    return { id, name, icon, sortOrder, createdAt: now }
+  }
+
+  /**
+   * Update a category
+   */
+  updateCategory(id: string, data: { name?: string; icon?: string }): Record<string, unknown> {
+    if (!this.db || !this.isUnlocked()) throw new Error('Vault is locked')
+
+    const existing = this.db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as CategoryRow | undefined
+    if (!existing) throw new Error('Category not found')
+
+    const name = data.name ?? existing.name
+    const icon = data.icon !== undefined ? data.icon : existing.icon
+
+    this.db.prepare(`
+      UPDATE categories SET name = ?, icon = ? WHERE id = ?
+    `).run(name, icon, id)
+
+    return {
+      id,
+      name,
+      icon,
+      sortOrder: existing.sort_order,
+      createdAt: existing.created_at,
+    }
+  }
+
+  /**
+   * Reorder categories
+   */
+  reorderCategories(orderedIds: string[]): void {
+    if (!this.db || !this.isUnlocked()) throw new Error('Vault is locked')
+
+    const stmt = this.db.prepare('UPDATE categories SET sort_order = ? WHERE id = ?')
+    const transaction = this.db.transaction((ids: string[]) => {
+      ids.forEach((id, index) => {
+        stmt.run(index, id)
+      })
+    })
+    transaction(orderedIds)
   }
 
   /**

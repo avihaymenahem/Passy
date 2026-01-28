@@ -24,7 +24,9 @@ export interface ElectronAPI {
   categories: {
     getAll: () => Promise<APIResponse<Category[]>>
     create: (name: string, icon?: string) => Promise<APIResponse<Category>>
+    update: (id: string, data: { name?: string; icon?: string }) => Promise<APIResponse<Category>>
     delete: (id: string) => Promise<APIResponse>
+    reorder: (orderedIds: string[]) => Promise<APIResponse>
   }
   clipboard: {
     write: (text: string, clearAfterMs?: number) => Promise<APIResponse>
