@@ -266,20 +266,6 @@ passy/
 
 ---
 
-## Roadmap
-
-- [ ] macOS support
-- [ ] Linux support
-- [ ] Import from other password managers
-- [ ] Export functionality
-- [ ] Browser extension
-- [ ] Biometric unlock (Windows Hello)
-- [ ] Multiple vaults
-- [ ] Password health check
-- [ ] Breach detection (Have I Been Pwned integration)
-
----
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
